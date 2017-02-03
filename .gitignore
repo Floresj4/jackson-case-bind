@@ -5,3 +5,5 @@
 
 #maven files
 target/
+
+src/main/resources/athletes.json
