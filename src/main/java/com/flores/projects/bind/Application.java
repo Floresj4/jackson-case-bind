@@ -67,8 +67,27 @@ public class Application {
                     public Enum deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
                         
 						Class<? extends Enum> rawClass = (Class<Enum<?>>) type.getRawClass();
-                        return Enum.valueOf(rawClass, jp.getValueAsString().toUpperCase());
+			
+						String stringValue = jp.getValueAsString();
+						//handle the soccer case differently
+                        return Enum.valueOf(rawClass, 
+                        		jp.getValueAsString().toLowerCase().equals("soccer")
+                        		? handleSpecialCase(stringValue)
+                        			: stringValue.toUpperCase());
                     }
+					
+	                /**
+	                 * The SOCCER enum has a different case which 
+	                 * requires a special scenario.
+	                 * @param value
+	                 * @return
+	                 */
+	                private String handleSpecialCase(String value) {
+	                	char[] temp = value.toCharArray();
+	                	for(int i = 0; i < temp.length; i+=2)
+	                		temp[i] = Character.toUpperCase(temp[i]);
+	                	return new String(temp);
+	                }
                 };
             }
         });
@@ -104,7 +123,7 @@ public class Application {
 
 	private static final List<Athlete> createCollection() {
     	return Arrays.asList(
-    			new Athlete("Simone Biles", 7, Sport.GYMNASTICS),
+    			new Athlete("Simone Biles", 19, Sport.GYMNASTICS),
     			new Athlete("Melissa Regan", 25, Sport.BASKETBALL),
     			new Athlete("Hope Solo", 30, Sport.SoCcEr),
     			new Athlete("Michael Jordan", 53, Sport.BASKETBALL));
@@ -142,7 +161,5 @@ public class Application {
         assertEquals(b.age, 25);
         assertEquals(b.sport, Sport.BASKETBALL);        
         logger.info("successfully deserialized athlete file");
-
-
 	}
 }
