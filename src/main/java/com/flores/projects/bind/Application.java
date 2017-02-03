@@ -40,7 +40,7 @@ public class Application {
 
 	static ObjectMapper mapper;
 	
-	static File source = new File("src/main/resources/athlete.json");
+	static File source = new File("src/main/resources/athletes.json");
 	
 	private static final Logger logger = LoggerFactory.getLogger(Application.class);
 	
