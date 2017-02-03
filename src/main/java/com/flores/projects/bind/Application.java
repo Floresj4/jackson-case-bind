@@ -1,6 +1,7 @@
 package com.flores.projects.bind;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.File;
@@ -16,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.DeserializationConfig;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -27,7 +29,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerModifier;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
 /**
@@ -37,18 +38,27 @@ import com.fasterxml.jackson.databind.ser.std.StdSerializer;
  */
 public class Application {
 
+	static ObjectMapper mapper;
+	
+	static File source = new File("src/main/resources/athlete.json");
+	
 	private static final Logger logger = LoggerFactory.getLogger(Application.class);
 	
-	public static void main(String[] args) throws IOException {
+	static {
 		PropertyConfigurator.configure("src/main/resources/log4j.properties");
+		
+		if(source.delete()) 
+			logger.debug("removed data file.");
+	}
 
-		ObjectMapper mapper = new ObjectMapper();
+	@SuppressWarnings("rawtypes")
+	private static void initialize() {
+		mapper = new ObjectMapper();
 
 		SimpleModule module = new SimpleModule();
         module.setDeserializerModifier(new BeanDeserializerModifier() {
             
-			@Override @SuppressWarnings("rawtypes")
-            public JsonDeserializer<Enum> modifyEnumDeserializer(DeserializationConfig config,
+			@Override public JsonDeserializer<Enum> modifyEnumDeserializer(DeserializationConfig config,
                                                               final JavaType type,
                                                               BeanDescription beanDesc,
                                                               final JsonDeserializer<?> deserializer) {
@@ -66,45 +76,73 @@ public class Application {
         module.addSerializer(Enum.class, new StdSerializer<Enum>(Enum.class) {
 			private static final long serialVersionUID = -2362448401225572969L;
 
-			@Override @SuppressWarnings("rawtypes")
-			public void serialize(Enum value, JsonGenerator gen,
+			@Override public void serialize(Enum value, JsonGenerator gen,
 					SerializerProvider provider) throws IOException {
 				gen.writeString(value.name().toLowerCase());
 			}
 		});
         
         mapper.registerModule(module);
+	}
+	
+	public static final List<Athlete> loadCollection(JsonNode root) {
+		List<Athlete> entries = new ArrayList<>();
+		
+		logger.debug("tree loaded...");
+        root.forEach(n -> { 
+        	logger.info(n.toString());
 
-        List<Sport>sports = Arrays.asList(Sport.GYMNASTICS, Sport.SOCCER, Sport.BASKETBALL);
+        	entries.add(new Athlete(
+            		n.path("name").asText(),
+            		n.path("age").asInt(), 
+            		mapper.convertValue(n.path("sport")
+            				, Sport.class)));
+        });
+		
+		return entries;
+	}
+
+	private static final List<Athlete> createCollection() {
+    	return Arrays.asList(
+    			new Athlete("Simone Biles", 7, Sport.GYMNASTICS),
+    			new Athlete("Melissa Regan", 25, Sport.BASKETBALL),
+    			new Athlete("Hope Solo", 30, Sport.SoCcEr),
+    			new Athlete("Michael Jordan", 53, Sport.BASKETBALL));
+	}
+	
+	private static void testWrite() throws JsonProcessingException {
+        //test write...
+        List<Sport>sports = Arrays.asList(Sport.GYMNASTICS, Sport.SoCcEr, Sport.BASKETBALL);
         String json = mapper.writeValueAsString(sports);
-        logger.info(json);
+		logger.info("current config output: \r\n\t{}", json);
+	}
+	
+	public static void main(String[] args) throws IOException {
 
-        //deserialize and collect
-        File source = new File("src/main/resources/athlete.json");
+		initialize();
 
-        List<Athlete>athletes = new ArrayList<>();
-        JsonNode root = mapper.readTree(source);
-        root.forEach(n -> logger.info(n.toString()));
-
-        Athlete a = null;
-        assertEquals(a.name, "Ralph Nader");
-        assertEquals(a.age, 7);
-        assertEquals(a.sport, Sport.GYMNASTICS);
-        athletes.add(a);
-
-        logger.info("successfully deserialized athlete file");
-
-        //serialize with collection
-        Athlete b = new Athlete("James Vanderbeek", 12, Sport.SOCCER);
-        athletes.add(b);
-
-        try { mapper.writeValue(new File("src/main/resources/athlete.json"), athletes); }
+		testWrite();
+		
+        try { mapper.writeValue(source, createCollection()); }
         catch(JsonMappingException | JsonGenerationException je) {
         	fail("error during serialization");
         }
 
-        //read back and test
-//        JsonNode root = mapper.readTree(source);
+        //deserialize and collect
+        List<Athlete>athletes = loadCollection(mapper.readTree(source));
+        assertTrue(athletes.size() > 0);
+
+    	Athlete a = athletes.get(0);
+        assertEquals(a.name, "Simone Biles");
+        assertEquals(a.age, 19);
+        assertEquals(a.sport, Sport.GYMNASTICS);
         
+        Athlete b = athletes.get(1);
+        assertEquals(b.name, "Melissa Regan");
+        assertEquals(b.age, 25);
+        assertEquals(b.sport, Sport.BASKETBALL);        
+        logger.info("successfully deserialized athlete file");
+
+
 	}
 }
