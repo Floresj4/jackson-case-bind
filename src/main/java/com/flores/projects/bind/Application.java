@@ -57,7 +57,7 @@ public class Application {
 
 		SimpleModule module = new SimpleModule();
         module.setDeserializerModifier(new BeanDeserializerModifier() {
-            
+
 			@Override public JsonDeserializer<Enum> modifyEnumDeserializer(DeserializationConfig config,
                                                               final JavaType type,
                                                               BeanDescription beanDesc,
@@ -65,17 +65,17 @@ public class Application {
                 return new JsonDeserializer<Enum>() {
 					@Override @SuppressWarnings("unchecked")
                     public Enum deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
-                        
 						Class<? extends Enum> rawClass = (Class<Enum<?>>) type.getRawClass();
-			
+
 						String stringValue = jp.getValueAsString();
+
 						//handle the soccer case differently
                         return Enum.valueOf(rawClass, 
                         		jp.getValueAsString().toLowerCase().equals("soccer")
                         		? handleSpecialCase(stringValue)
                         			: stringValue.toUpperCase());
                     }
-					
+
 	                /**
 	                 * The SOCCER enum has a different case which 
 	                 * requires a special scenario.
@@ -91,7 +91,7 @@ public class Application {
                 };
             }
         });
-        
+
         module.addSerializer(Enum.class, new StdSerializer<Enum>(Enum.class) {
 			private static final long serialVersionUID = -2362448401225572969L;
 
@@ -100,7 +100,7 @@ public class Application {
 				gen.writeString(value.name().toLowerCase());
 			}
 		});
-        
+
         mapper.registerModule(module);
 	}
 	
@@ -125,7 +125,7 @@ public class Application {
     	return Arrays.asList(
     			new Athlete("Simone Biles", 19, Sport.GYMNASTICS),
     			new Athlete("Melissa Regan", 25, Sport.BASKETBALL),
-    			new Athlete("Hope Solo", 30, Sport.SoCcEr),
+    			new Athlete("Hope Solo", 30, Sport.SoCcEr),		//here it is...
     			new Athlete("Michael Jordan", 53, Sport.BASKETBALL));
 	}
 	
@@ -155,11 +155,16 @@ public class Application {
         assertEquals(a.name, "Simone Biles");
         assertEquals(a.age, 19);
         assertEquals(a.sport, Sport.GYMNASTICS);
-        
+
         Athlete b = athletes.get(1);
         assertEquals(b.name, "Melissa Regan");
         assertEquals(b.age, 25);
         assertEquals(b.sport, Sport.BASKETBALL);        
+
+        Athlete c = athletes.get(2);
+        assertEquals(c.name, "Hope Solo");
+        assertEquals(c.age, 30);
+        assertEquals(c.sport, Sport.SoCcEr);	//!important assertion
         logger.info("successfully deserialized athlete file");
 	}
 }
